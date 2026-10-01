@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "HaloChat"
-  s.version      = "0.1.0"
+  s.version      = "0.1.1"
   s.summary      = "HaloAI in-app customer chat SDK: conversation, history, send, realtime, push."
   s.homepage     = "https://www.haloai.co.id"
   s.license      = { :type => "Proprietary" }

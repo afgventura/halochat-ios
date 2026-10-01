@@ -27,6 +27,9 @@ actor TokenGate {
     private let provider: HaloChatTokenProvider
     private var current: String?
     private var refreshing: Task<String, Error>?
+    /// The first mint in flight. Actors are re-entrant across `await`, so without a
+    /// shared task every concurrent first caller would mint its own server session.
+    private var minting: Task<String, Error>?
     private var onRefreshed: (@Sendable () async -> Void)?
 
     init(provider: HaloChatTokenProvider) {
@@ -40,9 +43,14 @@ actor TokenGate {
     func token() async throws -> String {
         if let current { return current }
         if let refreshing { return try await refreshing.value }
-        let fresh = try await provider.token(forceRefresh: false)
-        current = fresh
-        return fresh
+        if let minting { return try await minting.value }
+        let task = Task { [provider] in try await provider.token(forceRefresh: false) }
+        minting = task
+        defer { minting = nil }
+        let fresh = try await task.value
+        // A forced refresh may have finished first; its token is the newer one.
+        if current == nil { current = fresh }
+        return current ?? fresh
     }
 
     /// `rejected` is the token the server refused. If another caller already replaced

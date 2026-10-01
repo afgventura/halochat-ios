@@ -54,6 +54,11 @@ actor TokenCounter {
     }
 }
 
+actor CallCounter {
+    var count = 0
+    func increment() { count += 1 }
+}
+
 final class HaloChatTests: XCTestCase {
     var client: HaloChatClient!
     var tokens: TokenCounter!
@@ -201,6 +206,24 @@ final class HaloChatTests: XCTestCase {
 
         let refreshes = await tokens.forcedRefreshes
         XCTAssertEqual(refreshes, 1, "two concurrent 401s must mint one new token, not two")
+    }
+
+    func testConcurrentFirstCallsMintOneToken() async throws {
+        // A real backend takes time to mint; every call it receives is a new server session.
+        let calls = CallCounter()
+        let gate = TokenGate(provider: HaloChatClosureTokenProvider { _ in
+            await calls.increment()
+            try await Task.sleep(nanoseconds: 50_000_000)
+            return "hct_first"
+        })
+        async let a = gate.token()
+        async let b = gate.token()
+        async let c = gate.token()
+        let tokens = try await [a, b, c]
+
+        XCTAssertEqual(Set(tokens), ["hct_first"])
+        let minted = await calls.count
+        XCTAssertEqual(minted, 1, "concurrent first callers must share one mint, not each start a session")
     }
 
     func testUnknownEnumValuesDoNotFailThePage() async throws {

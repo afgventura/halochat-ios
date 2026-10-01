@@ -12,9 +12,9 @@ the integration guide.
 iOS 15+, Swift 5.9+ (Xcode 15+).
 
 - **Swift Package Manager:** Xcode -> File -> Add Package Dependencies ->
-  `https://github.com/afgventura/halochat-ios` -> version `0.1.0` -> add the `HaloChat` product.
-  In a `Package.swift`: `.package(url: "https://github.com/afgventura/halochat-ios.git", from: "0.1.0")`.
-- **CocoaPods:** `pod 'HaloChat', :git => 'https://github.com/afgventura/halochat-ios.git', :tag => '0.1.0'`
+  `https://github.com/afgventura/halochat-ios` -> version `0.1.1` -> add the `HaloChat` product.
+  In a `Package.swift`: `.package(url: "https://github.com/afgventura/halochat-ios.git", from: "0.1.1")`.
+- **CocoaPods:** `pod 'HaloChat', :git => 'https://github.com/afgventura/halochat-ios.git', :tag => '0.1.1'`
 
 ## 1. Your backend mints the token
 
