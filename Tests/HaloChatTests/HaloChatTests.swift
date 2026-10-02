@@ -14,7 +14,9 @@ final class StubProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var requests: [URLRequest] = []
     static let lock = NSLock()
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
+    // A WebSocket upgrade arrives here as plain http; requests to the test socket host must reach
+    // the (unreachable) network instead of consuming a canned reply.
+    override class func canInit(with request: URLRequest) -> Bool { request.url?.host != "127.0.0.1" }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
@@ -224,6 +226,51 @@ final class HaloChatTests: XCTestCase {
         XCTAssertEqual(Set(tokens), ["hct_first"])
         let minted = await calls.count
         XCTAssertEqual(minted, 1, "concurrent first callers must share one mint, not each start a session")
+    }
+
+    func testTimelineBackfillsThenCatchesUpByPollingWhenTheSocketIsDown() async throws {
+        func message(_ id: String, _ second: Int) -> String {
+            #"{"id":"\#(id)","text":"t","sender":"agent","senderKind":"ai","hasMedia":false,"mediaType":null,"mediaFilename":null,"createdAt":"2026-09-29T08:00:0\#(second).000Z","status":null}"#
+        }
+        func page(_ messages: [String], newest: String) -> StubProtocol.Canned {
+            .init(status: 200, body: #"{"status":"ok","data":{"messages":[\#(messages.joined(separator: ","))],"newestCursor":"\#(newest)","oldestCursor":"c0"}}"#)
+        }
+        StubProtocol.queue = [
+            page([message("m1", 1)], newest: "c1"),                    // backfill
+            page([message("m1", 1)], newest: "c1"),                    // catch-up: overlap only
+            page([message("m1", 1), message("m2", 2)], newest: "c2"),  // poll while the socket is down
+        ]
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubProtocol.self]
+        let offline = HaloChatClient(
+            configuration: HaloChatConfiguration(
+                baseURL: URL(string: "https://example.test")!,
+                realtimeURL: URL(string: "ws://127.0.0.1:1/ws/client")!,
+                pollInterval: 1
+            ),
+            tokenProvider: HaloChatClosureTokenProvider { _ in "hct_token" },
+            session: URLSession(configuration: config)
+        )
+
+        var last: [HaloChatMessage] = []
+        let stream = offline.timeline()
+        let consumer = Task {
+            for await snapshot in stream {
+                last = snapshot
+                if snapshot.count == 2 { break }
+            }
+        }
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline, !consumer.isCancelled, last.count < 2 {
+            try await Task.sleep(nanoseconds: 100_000_000)
+        }
+        consumer.cancel()
+
+        XCTAssertEqual(last.map(\.id), ["m1", "m2"], "polling must deliver the new message once, in order")
+        let afterCursors = StubProtocol.requests.compactMap { request in
+            URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "after" }?.value
+        }
+        XCTAssertEqual(afterCursors.first, "c1", "catch-up must resume from the backfill cursor")
     }
 
     func testUnknownEnumValuesDoNotFailThePage() async throws {

@@ -89,6 +89,11 @@ HaloAI sends pushes with **your** APNs key; share it once through the HaloAI tea
 (`channel_in_app_set_push_credentials`). Payload `userInfo`:
 `{"type":"halochat_message","roomId":…,"messageId":…}`.
 
+## Sample app
+
+`Example/` is a minimal SwiftUI chat plus a stand-in backend that mints tokens with the
+channel's server key. See `Example/README.md`.
+
 ## Errors
 
 `HaloChatError`: `.unauthorized` (token refused after one refresh), `.rateLimited(retryAfterSeconds:)`,
@@ -110,3 +115,9 @@ HaloAI sends pushes with **your** APNs key; share it once through the HaloAI tea
 ## Develop
 
 `swift test` (from this directory).
+
+## License
+
+Copyright 2026 HaloAI. Licensed under the [Apache License 2.0](LICENSE): free to use,
+modify and ship in your own (including closed-source) app. The SDK holds no secrets;
+it only talks to the HaloAI service your business is subscribed to.

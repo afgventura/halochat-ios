@@ -1,0 +1,29 @@
+# Sample app: `brew install xcodegen && xcodegen generate`, then open HaloChatSample.xcodeproj.
+name: HaloChatSample
+options:
+  bundleIdPrefix: com.example.halochat
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  HaloChat:
+    path: ..
+targets:
+  HaloChatSample:
+    type: application
+    platform: iOS
+    sources: [App]
+    dependencies:
+      - package: HaloChat
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.halochat.sample
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        CODE_SIGNING_ALLOWED: NO
+    info:
+      path: App/Info.plist
+      properties:
+        UILaunchScreen: {}
+        # Only for the local sample backend on http://127.0.0.1; your real backend uses HTTPS.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
