@@ -3,7 +3,7 @@ name: HaloChatSample
 options:
   bundleIdPrefix: com.example.halochat
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "15.0"
 packages:
   HaloChat:
     path: ..
@@ -14,6 +14,9 @@ targets:
     sources: [App]
     dependencies:
       - package: HaloChat
+        product: HaloChat
+      - package: HaloChat
+        product: HaloChatUI
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.halochat.sample
@@ -24,6 +27,11 @@ targets:
       path: App/Info.plist
       properties:
         UILaunchScreen: {}
+        CFBundleDisplayName: HaloChat Sample
+        # Attach sheet: Camera needs this. The Gallery uses PHPicker (no permission needed);
+        # the photo-library key is only for apps that also use UIImagePickerController's library.
+        NSCameraUsageDescription: Take a photo to send to customer service.
+        NSPhotoLibraryUsageDescription: Choose a photo or video to send to customer service.
         # Only for the local sample backend on http://127.0.0.1; your real backend uses HTTPS.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
