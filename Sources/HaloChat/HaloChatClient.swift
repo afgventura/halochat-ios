@@ -82,7 +82,19 @@ public final class HaloChatClient: Sendable {
     /// can never create a second message. Use a new id only for a new message.
     @discardableResult
     public func send(text: String, clientMessageId: UUID = UUID()) async throws -> HaloChatMessage {
-        try await sendMessage(SendBody(text: text, uploadId: nil), clientMessageId: clientMessageId)
+        try await sendMessage(SendBody(text: text, uploadId: nil, extras: nil), clientMessageId: clientMessageId)
+    }
+
+    /// Sends a text message with `extras`, a free-form JSON object of at most 16 KB (the Qiscus
+    /// `extras` field). The server stores it and returns it as `HaloChatMessage.extras` in history
+    /// and realtime events. `clientMessageId` works as in `send(text:clientMessageId:)`.
+    @discardableResult
+    public func send(
+        text: String,
+        extras: [String: HaloChatJSON],
+        clientMessageId: UUID = UUID()
+    ) async throws -> HaloChatMessage {
+        try await sendMessage(SendBody(text: text, uploadId: nil, extras: extras), clientMessageId: clientMessageId)
     }
 
     /// Uploads an attachment and sends it, optionally with a caption.
@@ -110,7 +122,7 @@ public final class HaloChatClient: Sendable {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw HaloChatError.server(status: (response as? HTTPURLResponse)?.statusCode ?? 0)
         }
-        return try await sendMessage(SendBody(text: caption, uploadId: upload.uploadId), clientMessageId: clientMessageId)
+        return try await sendMessage(SendBody(text: caption, uploadId: upload.uploadId, extras: nil), clientMessageId: clientMessageId)
     }
 
     /// A short-lived URL for a media message's file.
@@ -195,6 +207,8 @@ public final class HaloChatClient: Sendable {
 struct SendBody: Encodable {
     let text: String?
     let uploadId: String?
+    /// Encoded only when set (synthesized encodeIfPresent), so a send without extras is unchanged.
+    let extras: [String: HaloChatJSON]?
 }
 
 struct SentMessage: Decodable {

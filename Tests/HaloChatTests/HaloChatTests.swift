@@ -100,6 +100,38 @@ final class HaloChatTests: XCTestCase {
         XCTAssertEqual(body?["text"] as? String, "halo")
     }
 
+    func testSendWithoutExtrasOmitsTheFieldAndDecodesNil() async throws {
+        StubProtocol.queue = [.init(status: 200, body: #"{"status":"ok","data":{"message":\#(messageJSON)}}"#)]
+        let message = try await client.send(text: "halo")
+
+        XCTAssertNil(message.extras)
+        let body = try JSONSerialization.jsonObject(with: XCTUnwrap(StubProtocol.requests.first?.httpBody)) as? [String: Any]
+        XCTAssertNil(body?["extras"])
+    }
+
+    func testSendWithExtrasPostsAndDecodesTheObject() async throws {
+        let extras: [String: HaloChatJSON] = [
+            "id": .number(42),
+            "type": .string("anamnesa"),
+            "metadata": .object(["photos": .array([.string("https://x/a.jpg")]), "done": .bool(true), "note": .null]),
+        ]
+        let reply = #"{"id":"m1","text":"Anamnesa","sender":"me","senderKind":"customer","createdAt":"2026-09-29T08:00:00.123Z","status":"delivered","extras":{"id":42,"type":"anamnesa","metadata":{"photos":["https://x/a.jpg"],"done":true,"note":null}}}"#
+        StubProtocol.queue = [.init(status: 200, body: #"{"status":"ok","data":{"message":\#(reply)}}"#)]
+        let message = try await client.send(text: "Anamnesa", extras: extras)
+
+        XCTAssertEqual(message.extras, extras)
+        let body = try XCTUnwrap(StubProtocol.requests.first?.httpBody)
+        let sent = try JSONDecoder().decode([String: HaloChatJSON].self, from: body)
+        XCTAssertEqual(sent["extras"], .object(extras))
+        XCTAssertEqual(sent["text"], .string("Anamnesa"))
+    }
+
+    func testNonObjectExtrasDecodesAsNilWithoutFailingThePage() throws {
+        let json = #"{"id":"m1","sender":"me","senderKind":"customer","createdAt":"2026-09-29T08:00:00.123Z","extras":[1,2]}"#
+        let message = try Transport.decoder.decode(HaloChatMessage.self, from: Data(json.utf8))
+        XCTAssertNil(message.extras)
+    }
+
     func testUnauthorizedRefreshesTokenOnceAndRetries() async throws {
         StubProtocol.queue = [
             .init(status: 401, body: #"{"status":"error","error":"invalid_token"}"#),

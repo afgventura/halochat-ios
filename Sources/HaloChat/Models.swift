@@ -26,9 +26,12 @@ public struct HaloChatMessage: Codable, Equatable, Hashable, Sendable, Identifia
     public let mediaFilename: String?
     public let createdAt: Date
     public let status: Status?
+    /// Free-form JSON object sent with the message (the Qiscus `extras` field), or nil. The server
+    /// returns it unchanged. Your app decides what it means, for example a custom bubble.
+    public let extras: [String: HaloChatJSON]?
 
     private enum CodingKeys: String, CodingKey {
-        case id, text, sender, senderKind, hasMedia, mediaType, mediaFilename, createdAt, status
+        case id, text, sender, senderKind, hasMedia, mediaType, mediaFilename, createdAt, status, extras
     }
 
     /// Tolerant decoding: a value added by a newer server never fails a whole page.
@@ -43,6 +46,8 @@ public struct HaloChatMessage: Codable, Equatable, Hashable, Sendable, Identifia
         mediaFilename = try? container.decodeIfPresent(String.self, forKey: .mediaFilename)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         status = (try? container.decodeIfPresent(String.self, forKey: .status)).flatMap { $0.flatMap(Status.init(rawValue:)) }
+        // Tolerant like the fields above: a value that is not an object becomes nil.
+        extras = (try? container.decodeIfPresent([String: HaloChatJSON].self, forKey: .extras)) ?? nil
     }
 
     public init(
@@ -54,7 +59,8 @@ public struct HaloChatMessage: Codable, Equatable, Hashable, Sendable, Identifia
         mediaType: String? = nil,
         mediaFilename: String? = nil,
         createdAt: Date,
-        status: Status? = nil
+        status: Status? = nil,
+        extras: [String: HaloChatJSON]? = nil
     ) {
         self.id = id
         self.text = text
@@ -65,6 +71,7 @@ public struct HaloChatMessage: Codable, Equatable, Hashable, Sendable, Identifia
         self.mediaFilename = mediaFilename
         self.createdAt = createdAt
         self.status = status
+        self.extras = extras
     }
 }
 

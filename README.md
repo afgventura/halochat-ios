@@ -18,16 +18,16 @@ the integration guide.
 iOS 15+, Swift 5.9+ (Xcode 15+).
 
 - **Swift Package Manager:** Xcode -> File -> Add Package Dependencies ->
-  `https://github.com/afgventura/halochat-ios` -> version `0.2.0` -> add the **`HaloChatUI`** product
+  `https://github.com/afgventura/halochat-ios` -> version `0.3.0` -> add the **`HaloChatUI`** product
   (it brings `HaloChat` with it). In a `Package.swift`:
   ```swift
-  .package(url: "https://github.com/afgventura/halochat-ios.git", from: "0.2.0"),
+  .package(url: "https://github.com/afgventura/halochat-ios.git", from: "0.3.0"),
   // target dependency:
   .product(name: "HaloChatUI", package: "halochat-ios"),
   ```
   Then `import HaloChat` and `import HaloChatUI`.
-- **CocoaPods:** `pod 'HaloChat/UI', '~> 0.2.0'` (from the git source until the pod is on trunk:
-  `pod 'HaloChat/UI', :git => 'https://github.com/afgventura/halochat-ios.git', :tag => '0.2.0'`).
+- **CocoaPods:** `pod 'HaloChat/UI', '~> 0.3.0'` (from the git source until the pod is on trunk:
+  `pod 'HaloChat/UI', :git => 'https://github.com/afgventura/halochat-ios.git', :tag => '0.3.0'`).
   With CocoaPods everything is in one module: just `import HaloChat`.
   `pod 'HaloChat'` alone is still core-only.
 
@@ -283,6 +283,25 @@ try await chat.send(attachment: jpegData, filename: "ktp.jpg", mimeType: "image/
 let url = try await chat.mediaURL(for: message.id)   // short-lived download URL
 ```
 
+#### Extras (custom data on a message)
+
+`extras` is a free-form JSON object (at most 16 KB) that the server stores with the message and
+returns unchanged. It works like the Qiscus `extras` field. Your app decides what it means, for
+example a custom bubble. `message.extras` is `nil` on every message sent without it. Values are
+`HaloChatJSON` (numbers are `Double`; send a very large integer id as a string).
+
+```swift
+try await chat.send(text: "Anamnesa", extras: [
+    "type": .string("anamnesa"),
+    "metadata": .object(["photos": .array([.string(photoURL)])]),
+], clientMessageId: id)
+
+// History and realtime messages carry it back:
+if case .string("anamnesa")? = message.extras?["type"] { /* show your bubble */ }
+```
+
+Needs SDK 0.3.0 and a server with `extras` support. A server without it ignores the field.
+
 ### Push (background)
 
 ```swift
@@ -315,7 +334,7 @@ try await chat.signOut()   // stops this device's pushes and expires its HaloCha
 | `QiscusCore.setup(WithAppID:)` | `HaloChatClient(configuration:tokenProvider:)` |
 | `QiscusCore.setUser` / JWT nonce | backend-minted `hct_` token via `tokenProvider` |
 | `chatUser` / room list | `conversation()` (one CS room per user) |
-| `sendMessage` | `send(text:clientMessageId:)`, `send(attachment:…)` |
+| `sendMessage` | `send(text:clientMessageId:)`, `send(text:extras:clientMessageId:)`, `send(attachment:…)` |
 | realtime delegates (MQTT) | `timeline()` `AsyncStream` |
 | `QiscusCore.shared.register(deviceToken:)` | `registerPushToken(_:)` |
 | `QiscusCore.clearUser` | `signOut()` + drop the client |
